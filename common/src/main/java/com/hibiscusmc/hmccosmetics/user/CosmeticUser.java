@@ -49,6 +49,7 @@ public class CosmeticUser {
     private final UUID uniqueId;
     private int taskId;
     private final HashMap<CosmeticSlot, Cosmetic> playerCosmetics = new HashMap<>();
+    public final Map<CosmeticSlot, ItemStack> cachedCosmeticItems = new HashMap<>();
     private UserWardrobeManager userWardrobeManager;
     private UserBalloonManager userBalloonManager;
     @Getter
@@ -158,6 +159,7 @@ public class CosmeticUser {
         }
         colors.remove(slot);
         playerCosmetics.remove(slot);
+        cachedCosmeticItems.remove(slot);
         removeArmor(slot);
     }
 
@@ -216,9 +218,17 @@ public class CosmeticUser {
     }
 
     public ItemStack getUserCosmeticItem(CosmeticSlot slot) {
+
+        if (cachedCosmeticItems.containsKey(slot))
+            return cachedCosmeticItems.get(slot);
+
         Cosmetic cosmetic = getCosmetic(slot);
         if (cosmetic == null) return new ItemStack(Material.AIR);
-        return getUserCosmeticItem(cosmetic);
+
+        ItemStack itemStack = getUserCosmeticItem(cosmetic);
+        cachedCosmeticItems.put(slot, itemStack);
+
+        return itemStack;
     }
 
     public ItemStack getUserCosmeticItem(Cosmetic cosmetic) {

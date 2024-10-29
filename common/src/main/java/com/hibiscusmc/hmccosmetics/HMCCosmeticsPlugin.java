@@ -128,6 +128,7 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
                 user.leaveWardrobe(true);
             }
             Database.save(user);
+            user.cachedCosmeticItems.clear();
         }
     }
 
