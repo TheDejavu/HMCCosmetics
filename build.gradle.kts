@@ -3,12 +3,12 @@ import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 plugins {
     id("java")
     id("com.gradleup.shadow") version "8.3.2"
-    id("xyz.jpenilla.run-paper") version "2.2.0"
+    id("xyz.jpenilla.run-paper") version "2.3.1"
     id("net.minecrell.plugin-yml.bukkit") version "0.6.0"
 }
 
 group = "com.hibiscusmc"
-version = "2.7.4-DEV"
+version = "2.7.5${getGitCommitHash()}"
 
 allprojects {
     apply(plugin = "java")
@@ -64,6 +64,9 @@ allprojects {
         // Eco-Suite/Auxilor Repo
         maven("https://repo.auxilor.io/repository/maven-public/")
 
+        // Triumph GUI
+        maven("https://repo.triumphteam.dev/snapshots")
+
         // Hibiscus Commons
         maven("https://repo.hibiscusmc.com/releases")
     }
@@ -72,7 +75,7 @@ allprojects {
         compileOnly(fileTree("${project.rootDir}/lib") { include("*.jar") })
         compileOnly("com.mojang:authlib:1.5.25")
         //compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
-        compileOnly("io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT")
+        compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
         compileOnly("org.jetbrains:annotations:24.1.0")
         compileOnly("com.comphenix.protocol:ProtocolLib:5.3.0")
         compileOnly("me.clip:placeholderapi:2.11.6")
@@ -80,18 +83,18 @@ allprojects {
         compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.12")
         //compileOnly("it.unimi.dsi:fastutil:8.5.14")
         compileOnly("org.projectlombok:lombok:1.18.34")
-        compileOnly("me.lojosho:HibiscusCommons:0.4.9")
+        compileOnly("me.lojosho:HibiscusCommons:0.6.0-85d65299")
 
         // Handled by Spigot Library Loader
-        compileOnly("net.kyori:adventure-api:4.17.0")
-        compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
-        compileOnly("net.kyori:adventure-platform-bukkit:4.3.3")
+        compileOnly("net.kyori:adventure-api:4.18.0")
+        compileOnly("net.kyori:adventure-text-minimessage:4.18.0")
+        compileOnly("net.kyori:adventure-platform-bukkit:4.3.4")
 
-        annotationProcessor("org.projectlombok:lombok:1.18.34")
-        testCompileOnly("org.projectlombok:lombok:1.18.34")
-        testAnnotationProcessor("org.projectlombok:lombok:1.18.34")
+        annotationProcessor("org.projectlombok:lombok:1.18.36")
+        testCompileOnly("org.projectlombok:lombok:1.18.36")
+        testAnnotationProcessor("org.projectlombok:lombok:1.18.36")
 
-        implementation("dev.triumphteam:triumph-gui:3.1.10") {
+        implementation("dev.triumphteam:triumph-gui:3.1.12-SNAPSHOT") {
             exclude("net.kyori") // Already have adventure API
         }
         implementation("com.owen1212055:particlehelper:1.0.0-SNAPSHOT")
@@ -120,12 +123,12 @@ tasks {
     }
 
     runServer {
-        minecraftVersion("1.21.1")
+        minecraftVersion("1.21.4")
 
         downloadPlugins {
             hangar("PlaceholderAPI", "2.11.6")
             url("https://ci.dmulloy2.net/job/ProtocolLib/lastSuccessfulBuild/artifact/build/libs/ProtocolLib.jar")
-            url("https://download.luckperms.net/1556/bukkit/loader/LuckPerms-Bukkit-5.4.141.jar")
+            url("https://download.luckperms.net/1567/bukkit/loader/LuckPerms-Bukkit-5.4.150.jar")
         }
     }
 
@@ -159,7 +162,7 @@ tasks {
 bukkit {
     load = BukkitPluginDescription.PluginLoadOrder.POSTWORLD
     main = "com.hibiscusmc.hmccosmetics.HMCCosmeticsPlugin"
-    apiVersion = "1.19"
+    apiVersion = "1.20"
     authors = listOf("LoJoSho")
     depend = listOf("HibiscusCommons", "ProtocolLib")
     softDepend = listOf("ModelEngine", "Oraxen", "ItemsAdder", "Geary", "HMCColor", "WorldGuard", "MythicMobs", "PlaceholderAPI", "SuperVanish", "PremiumVanish", "LibsDisguises", "Denizen", "MMOItems", "Eco")
@@ -260,6 +263,25 @@ bukkit {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21
-    ))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+}
+
+fun getGitCommitHash(): String {
+    var includeHash = true
+    val includeHashVariable = System.getenv("HMCC_INCLUDE_HASH")
+
+    if (!includeHashVariable.isNullOrEmpty()) includeHash = includeHashVariable.toBoolean()
+
+    if (includeHash) {
+        return try {
+            val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+                .redirectErrorStream(true)
+                .start()
+
+            process.inputStream.bufferedReader().use { "-" + it.readLine().trim() }
+        } catch (e: Exception) {
+            "-unknown" // Fallback if Git is not available or an error occurs
+        }
+    }
+    return ""
 }

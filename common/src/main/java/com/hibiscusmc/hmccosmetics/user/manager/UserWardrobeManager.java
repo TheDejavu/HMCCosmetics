@@ -64,6 +64,7 @@ public class UserWardrobeManager {
     private BossBar bossBar;
     @Getter
     private boolean active;
+    @Setter
     @Getter
     private WardrobeStatus wardrobeStatus;
     @Getter
@@ -83,8 +84,11 @@ public class UserWardrobeManager {
         this.viewingLocation = wardrobeLocation.getViewerLocation();
         this.npcLocation = wardrobeLocation.getNpcLocation();
 
+        String defaultMenu = wardrobe.getDefaultMenu();
+        if (defaultMenu != null && Menus.hasMenu(defaultMenu)) this.lastOpenMenu = Menus.getMenu(defaultMenu);
+        else this.lastOpenMenu = Menus.getDefaultMenu();
+
         wardrobeStatus = WardrobeStatus.SETUP;
-        this.lastOpenMenu = Menus.getDefaultMenu();
     }
 
     public void start() {
@@ -129,7 +133,7 @@ public class UserWardrobeManager {
                 HMCCPacketManager.sendFakePlayerSpawnPacket(npcLocation, WARDROBE_UUID, NPC_ID, viewer);
                 HMCCPacketManager.sendPlayerOverlayPacket(NPC_ID, viewer);
                 MessagesUtil.sendDebugMessages("Spawned Fake Player on " + npcLocation);
-                NMSHandlers.getHandler().hideNPCName(player, npcName);
+                NMSHandlers.getHandler().getPacketHandler().sendScoreboardHideNamePacket(player, npcName);
             }, 4);
 
             // Location
@@ -281,7 +285,7 @@ public class UserWardrobeManager {
         run.run();
     }
 
-    public void update() {
+    private void update() {
         final AtomicInteger data = new AtomicInteger();
 
         BukkitRunnable runnable = new BukkitRunnable() {
@@ -310,7 +314,7 @@ public class UserWardrobeManager {
                 int nextyaw = HMCCServerUtils.getNextYaw(yaw, rotationSpeed);
                 data.set(nextyaw);
 
-                for (CosmeticSlot slot : CosmeticSlot.values()) {
+                for (CosmeticSlot slot : CosmeticSlot.values().values()) {
                     HMCCPacketManager.equipmentSlotUpdate(NPC_ID, user, slot, viewer);
                 }
 
@@ -341,10 +345,6 @@ public class UserWardrobeManager {
         };
 
         runnable.runTaskTimer(HMCCosmeticsPlugin.getInstance(), 0, 2);
-    }
-
-    public void setWardrobeStatus(WardrobeStatus status) {
-        this.wardrobeStatus = status;
     }
 
     public enum WardrobeStatus {
