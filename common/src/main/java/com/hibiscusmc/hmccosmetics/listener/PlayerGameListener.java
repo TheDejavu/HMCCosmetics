@@ -2,10 +2,7 @@ package com.hibiscusmc.hmccosmetics.listener;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.Pair;
 import com.hibiscusmc.hmccosmetics.HMCCosmeticsPlugin;
@@ -17,11 +14,9 @@ import com.hibiscusmc.hmccosmetics.cosmetic.CosmeticSlot;
 import com.hibiscusmc.hmccosmetics.cosmetic.types.CosmeticArmorType;
 import com.hibiscusmc.hmccosmetics.cosmetic.types.CosmeticBackpackType;
 import com.hibiscusmc.hmccosmetics.cosmetic.types.CosmeticBalloonType;
-import com.hibiscusmc.hmccosmetics.cosmetic.types.CosmeticEmoteType;
 import com.hibiscusmc.hmccosmetics.gui.Menu;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUsers;
-import com.hibiscusmc.hmccosmetics.user.manager.UserEmoteManager;
 import com.hibiscusmc.hmccosmetics.user.manager.UserWardrobeManager;
 import com.hibiscusmc.hmccosmetics.util.HMCCInventoryUtils;
 import com.hibiscusmc.hmccosmetics.util.HMCCServerUtils;
@@ -98,10 +93,6 @@ public class PlayerGameListener implements Listener {
         CosmeticUser user = CosmeticUsers.getUser(event.getPlayer().getUniqueId());
 
         if (user == null) return;
-        if (event.isSneaking()) {
-            user.getUserEmoteManager().stopEmote(UserEmoteManager.StopEmoteReason.SNEAK);
-        }
-
         if (!event.isSneaking()) return;
         if (!user.isInWardrobe()) return;
 
@@ -139,9 +130,6 @@ public class PlayerGameListener implements Listener {
         }, 2);
 
         if (event.getCause().equals(PlayerTeleportEvent.TeleportCause.NETHER_PORTAL) || event.getCause().equals(PlayerTeleportEvent.TeleportCause.END_PORTAL)) return;
-        if (user.getUserEmoteManager().isPlayingEmote()) {
-            user.getUserEmoteManager().stopEmote(UserEmoteManager.StopEmoteReason.TELEPORT);
-        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -183,14 +171,6 @@ public class PlayerGameListener implements Listener {
         if (!(event.getEntity() instanceof Player player)) return;
         CosmeticUser user = CosmeticUsers.getUser(player);
         if (user == null) return;
-        if (user.getUserEmoteManager().isPlayingEmote()) {
-            if (Settings.isEmoteInvincible()) {
-                event.setCancelled(true);
-            }
-            if (Settings.isEmoteDamageLeave()) {
-                user.getUserEmoteManager().stopEmote(UserEmoteManager.StopEmoteReason.DAMAGE);
-            }
-        }
         if (user.isInWardrobe()) {
             if (WardrobeSettings.isPreventDamage()) {
                 event.setCancelled(true);
@@ -205,10 +185,6 @@ public class PlayerGameListener implements Listener {
         Player player = event.getPlayer();
         CosmeticUser user = CosmeticUsers.getUser(player);
         if (user == null) return;
-        if (!Settings.isEmoteMoveCheck() && user.getUserEmoteManager().isPlayingEmote()) {
-            event.setCancelled(true);
-            return;
-        }
         user.updateCosmetic(CosmeticSlot.BACKPACK);
         user.updateCosmetic(CosmeticSlot.BALLOON);
     }
@@ -272,12 +248,6 @@ public class PlayerGameListener implements Listener {
         CosmeticUser user = CosmeticUsers.getUser(event.getPlayer().getUniqueId());
         if (user == null) return;
         // Really need to look into optimization of this
-        if (user.hasCosmeticInSlot(CosmeticSlot.EMOTE) && event.getPlayer().isSneaking() && event.getPlayer().hasPermission("hmccosmetics.emote.shiftrun")) {
-            CosmeticEmoteType cosmeticEmoteType = (CosmeticEmoteType) user.getCosmetic(CosmeticSlot.EMOTE);
-            cosmeticEmoteType.run(user);
-            event.setCancelled(true);
-            return;
-        }
         Bukkit.getScheduler().runTaskLater(HMCCosmeticsPlugin.getInstance(), () -> {
             if (user.getEntity() == null) return; // Player has likely logged off
             user.updateCosmetic(CosmeticSlot.OFFHAND);
@@ -455,7 +425,7 @@ public class PlayerGameListener implements Listener {
     }
 
     private void registerInventoryClickListener() {
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(HMCCosmeticsPlugin.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Client.WINDOW_CLICK) {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(HMCCosmeticsPlugin.getInstance(), ListenerPriority.NORMAL, List.of(PacketType.Play.Client.WINDOW_CLICK), ListenerOptions.ASYNC) {
             @Override
             public void onPacketReceiving(PacketEvent event) {
                 Player player = event.getPlayer();
@@ -481,7 +451,7 @@ public class PlayerGameListener implements Listener {
     }
 
     private void registerMenuChangeListener() {
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(HMCCosmeticsPlugin.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Server.WINDOW_ITEMS) {
+        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(HMCCosmeticsPlugin.getInstance(), ListenerPriority.NORMAL, List.of(PacketType.Play.Server.WINDOW_ITEMS), ListenerOptions.ASYNC) {
             @Override
             public void onPacketSending(PacketEvent event) {
                 MessagesUtil.sendDebugMessages("Menu Initial ");
@@ -515,7 +485,7 @@ public class PlayerGameListener implements Listener {
                     if ((slot >= 5 && slot <= 8) || slot == 45) {
                         if (!items.containsKey(slot)) continue;
                         slotData.set(slot, items.get(slot));
-                        MessagesUtil.sendDebugMessages("Set " + slot + " as " + items.get(slot));
+                        if (Settings.isDebugMode()) MessagesUtil.sendDebugMessages("Set " + slot + " as " + items.get(slot));
                     }
                 }
                 packet.getItemListModifier().write(0, slotData);
@@ -669,10 +639,6 @@ public class PlayerGameListener implements Listener {
                 Player player = event.getPlayer();
                 CosmeticUser user = CosmeticUsers.getUser(player);
                 if (user == null) return;
-                if (user.getUserEmoteManager().isPlayingEmote()) {
-                    event.setCancelled(true);
-                    return;
-                }
                 if (!user.isInWardrobe()) return;
                 if (!user.getWardrobeManager().getWardrobeStatus().equals(UserWardrobeManager.WardrobeStatus.RUNNING)) return;
 
@@ -691,7 +657,7 @@ public class PlayerGameListener implements Listener {
                 if (event.getPlayer() == null) return;
                 CosmeticUser user = CosmeticUsers.getUser(event.getPlayer());
                 if (user == null) return;
-                if (user.getUserEmoteManager().isPlayingEmote() || user.isInWardrobe()) {
+                if (user.isInWardrobe()) {
                     event.setCancelled(true);
                 }
             }
@@ -703,7 +669,6 @@ public class PlayerGameListener implements Listener {
         for (final EquipmentSlot slot : EquipmentSlot.values()) {
             final Set<Material> armorItems = ARMOR_ITEMS.get(slot);
             if (armorItems == null) continue;
-            if (material == null) continue;
             if (armorItems.contains(material)) return slot;
         }
         return null;

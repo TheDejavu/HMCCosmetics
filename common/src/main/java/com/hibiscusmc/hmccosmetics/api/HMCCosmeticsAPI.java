@@ -2,6 +2,7 @@ package com.hibiscusmc.hmccosmetics.api;
 
 import com.hibiscusmc.hmccosmetics.HMCCosmeticsPlugin;
 import com.hibiscusmc.hmccosmetics.cosmetic.Cosmetic;
+import com.hibiscusmc.hmccosmetics.cosmetic.CosmeticProvider;
 import com.hibiscusmc.hmccosmetics.cosmetic.CosmeticSlot;
 import com.hibiscusmc.hmccosmetics.cosmetic.Cosmetics;
 import com.hibiscusmc.hmccosmetics.gui.Menu;
@@ -9,9 +10,11 @@ import com.hibiscusmc.hmccosmetics.gui.Menus;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUserProvider;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUsers;
+import me.lojosho.hibiscuscommons.nms.MinecraftVersion;
 import me.lojosho.hibiscuscommons.nms.NMSHandlers;
 import me.lojosho.shaded.configurate.ConfigurationNode;
 import org.bukkit.Color;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -93,7 +96,7 @@ public final class HMCCosmeticsAPI {
      *              customization
      */
     public static void equipCosmetic(@NotNull CosmeticUser user, @NotNull Cosmetic cosmetic, @Nullable Color color) {
-        user.addPlayerCosmetic(cosmetic, color);
+        user.addCosmetic(cosmetic, color);
     }
 
     /**
@@ -143,9 +146,10 @@ public final class HMCCosmeticsAPI {
      *
      * @param id the id for the cosmetic slot
      * @return the {@link CosmeticSlot} associated with the given id
+     * @apiNote this should be done in your {@link JavaPlugin#onLoad()} or it may error.
      */
-    public static @NotNull CosmeticSlot registerCosmeticSlot(@NotNull String id, BiConsumer<String, ConfigurationNode> consumer) {
-        return CosmeticSlot.register(id, consumer);
+    public static @NotNull CosmeticSlot registerCosmeticSlot(@NotNull String id) {
+        return CosmeticSlot.register(id);
     }
 
     /**
@@ -153,6 +157,7 @@ public final class HMCCosmeticsAPI {
      *
      * @param provider the provider to register
      * @throws IllegalArgumentException if another plugin has already registered a provider
+     * @apiNote this should be done in your {@link JavaPlugin#onLoad()} or it may error.
      */
     public static void registerCosmeticUserProvider(@NotNull CosmeticUserProvider provider) {
         CosmeticUsers.registerProvider(provider);
@@ -168,6 +173,26 @@ public final class HMCCosmeticsAPI {
     }
 
     /**
+     * Registers a new cosmetic user provider to use for constructing {@link Cosmetic} instances.
+     *
+     * @param provider the provider to register
+     * @throws IllegalArgumentException if another plugin has already registered a provider
+     * @apiNote this should be done in your {@link JavaPlugin#onLoad()} or it may error.
+     */
+    public static void registerCosmeticProvider(@NotNull CosmeticProvider provider) {
+        Cosmetics.registerProvider(provider);
+    }
+
+    /**
+     * Retrieves the current {@link CosmeticProvider} that is in use.
+     *
+     * @return the current {@link CosmeticProvider}
+     */
+    public static @NotNull CosmeticProvider getCosmeticProvider() {
+        return Cosmetics.getProvider();
+    }
+
+    /**
      * Retrieves the NMS version of the server as recognized by HMCCosmetics.
      *
      * <p>This value will be {@code null} until the HMCC setup has been completed. Ensure setup is finished
@@ -176,7 +201,9 @@ public final class HMCCosmeticsAPI {
      * @return the NMS version of the server in string format, or {@code null} if setup is not complete.
      */
     public static @Nullable String getNMSVersion() {
-        return NMSHandlers.getVersion();
+        MinecraftVersion version = NMSHandlers.getVersion();
+        if (version == null) return null;
+        return version.toString();
     }
 
     /**

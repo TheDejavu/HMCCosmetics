@@ -1,6 +1,5 @@
 package com.hibiscusmc.hmccosmetics.user;
 
-import com.google.common.collect.HashBiMap;
 import com.hibiscusmc.hmccosmetics.util.HMCCServerUtils;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -9,11 +8,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CosmeticUsers {
-    private static final HashBiMap<UUID, CosmeticUser> COSMETIC_USERS = HashBiMap.create();
 
-    private static CosmeticUserProvider PROVIDER = CosmeticUserProvider.DEFAULT;
+    private static final ConcurrentHashMap<UUID, CosmeticUser> COSMETIC_USERS = new ConcurrentHashMap<>();
+
+    private static CosmeticUserProvider PROVIDER = CosmeticUserProvider.Default.INSTANCE;
 
     /**
      * Adds a user to the Hashmap of stored CosmeticUsers. This will not override an entry if it already exists. If you need to override, delete then add.
@@ -80,7 +81,7 @@ public class CosmeticUsers {
      * @throws IllegalArgumentException if the provider is already registered by another plugin
      */
     public static void registerProvider(final CosmeticUserProvider provider) {
-        if(PROVIDER != CosmeticUserProvider.DEFAULT) {
+        if(PROVIDER != CosmeticUserProvider.Default.INSTANCE) {
             throw new IllegalArgumentException("CosmeticUserProvider already registered by %s, this conflicts with %s attempting to register their own.".formatted(
                 PROVIDER.getProviderPlugin().getName(),
                 provider.getProviderPlugin().getName()
@@ -104,6 +105,7 @@ public class CosmeticUsers {
      */
     @NotNull
     public static Set<CosmeticUser> values() {
-        return COSMETIC_USERS.values();
+        // fix this later; this is a temporary fix. It was originally a set, now it's a collection
+        return Set.copyOf(COSMETIC_USERS.values());
     }
 }
