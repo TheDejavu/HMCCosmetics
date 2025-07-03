@@ -22,8 +22,10 @@ import com.hibiscusmc.hmccosmetics.user.manager.UserWardrobeManager;
 import com.hibiscusmc.hmccosmetics.util.HMCCInventoryUtils;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
 import com.hibiscusmc.hmccosmetics.util.packets.HMCCPacketManager;
+import com.ticxo.modelengine.api.nms.NMSHandler;
 import lombok.Getter;
 import me.lojosho.hibiscuscommons.hooks.Hooks;
+import me.lojosho.hibiscuscommons.nms.NMSHandlers;
 import me.lojosho.hibiscuscommons.util.InventoryUtils;
 import me.lojosho.hibiscuscommons.util.packets.PacketManager;
 import org.bukkit.Bukkit;
@@ -143,7 +145,7 @@ public class CosmeticUser implements CosmeticHolder {
             showCosmetics(HiddenReason.GAMEMODE);
         }
 
-        if (bukkitPlayer != null && Settings.getDisabledWorlds().contains(getEntity().getLocation().getWorld().getName())) {
+        if (bukkitPlayer != null && Settings.getDisabledWorlds().contains(bukkitPlayer.getLocation().getWorld().getName())) {
             MessagesUtil.sendDebugMessages("Hiding Cosmetics due to world");
             hideCosmetics(CosmeticUser.HiddenReason.WORLD);
         } else if (this.isHidden(HiddenReason.WORLD)) {
@@ -415,29 +417,15 @@ public class CosmeticUser implements CosmeticHolder {
             }
 
 
-            if (colors.containsKey(cosmetic.getSlot())) {
-                Color color = colors.get(cosmetic.getSlot());
-                if (itemMeta instanceof LeatherArmorMeta leatherMeta) {
-                    leatherMeta.setColor(color);
-                } else if (itemMeta instanceof PotionMeta potionMeta) {
-                    potionMeta.setColor(color);
-                } else if (itemMeta instanceof MapMeta mapMeta) {
-                    mapMeta.setColor(color);
-                } else if (itemMeta instanceof FireworkEffectMeta fireworkMeta) {
-                    fireworkMeta.setEffect(
-                            FireworkEffect.builder()
-                            .with(FireworkEffect.Type.BALL)
-                            .withColor(color)
-                            .trail(false)
-                            .flicker(false)
-                            .build()
-                    );
-                }
-            }
             itemMeta.getPersistentDataContainer().set(HMCCInventoryUtils.getCosmeticKey(), PersistentDataType.STRING, cosmetic.getId());
             itemMeta.getPersistentDataContainer().set(InventoryUtils.getOwnerKey(), PersistentDataType.STRING, getEntity().getUniqueId().toString());
 
             item.setItemMeta(itemMeta);
+
+            if (colors.containsKey(cosmetic.getSlot())) {
+                Color color = colors.get(cosmetic.getSlot());
+                item = NMSHandlers.getHandler().getUtilHandler().setColor(item, color);
+            }
         }
         return item;
     }
@@ -625,7 +613,7 @@ public class CosmeticUser implements CosmeticHolder {
      * @return Entity
      */
     public Entity getEntity() {
-        return Bukkit.getEntity(uniqueId);
+        return getPlayer();
     }
 
     public Color getCosmeticColor(CosmeticSlot slot) {
@@ -633,13 +621,13 @@ public class CosmeticUser implements CosmeticHolder {
     }
 
     public List<CosmeticSlot> getDyeableSlots() {
-        ArrayList<CosmeticSlot> dyableSlots = new ArrayList<>();
+        ArrayList<CosmeticSlot> dyeableSlots = new ArrayList<>();
 
         for (Cosmetic cosmetic : playerCosmetics.values()) {
-            if (cosmetic.isDyable()) dyableSlots.add(cosmetic.getSlot());
+            if (cosmetic.isDyeable()) dyeableSlots.add(cosmetic.getSlot());
         }
 
-        return dyableSlots;
+        return dyeableSlots;
     }
 
     @Override
@@ -648,7 +636,12 @@ public class CosmeticUser implements CosmeticHolder {
         if (isInWardrobe() && !ignoreWardrobe) {
             if (WardrobeSettings.isTryCosmeticsInWardrobe() && userWardrobeManager.getWardrobeStatus().equals(UserWardrobeManager.WardrobeStatus.RUNNING)) return true;
         }
-        return getEntity().hasPermission(cosmetic.getPermission());
+        final Player player = getPlayer();
+        if (player != null) return player.hasPermission(cosmetic.getPermission());
+        // This sucks, but basically if we can find a player, use that. If not, try to find the entity. If it can't find the entity, just return false.
+        final Entity entity = getEntity();
+        if (entity != null) return entity.hasPermission(cosmetic.getPermission());
+        return false;
     }
 
     public void hidePlayer() {

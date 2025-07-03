@@ -20,6 +20,7 @@ import com.hibiscusmc.hmccosmetics.listener.PaperPlayerGameListener;
 import com.hibiscusmc.hmccosmetics.listener.PlayerConnectionListener;
 import com.hibiscusmc.hmccosmetics.listener.PlayerGameListener;
 import com.hibiscusmc.hmccosmetics.listener.ServerListener;
+import com.hibiscusmc.hmccosmetics.packets.CosmeticPacketInterface;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUser;
 import com.hibiscusmc.hmccosmetics.user.CosmeticUsers;
 import com.hibiscusmc.hmccosmetics.util.MessagesUtil;
@@ -63,7 +64,12 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
         if (!Path.of(getDataFolder().getPath(), "messages.yml").toFile().exists()) saveResource("messages.yml", false);
         if (!Path.of(getDataFolder().getPath(), "translations.yml").toFile().exists()) saveResource("translations.yml", false);
         if (!Path.of(getDataFolder().getPath() + "/cosmetics/").toFile().exists()) saveResource("cosmetics/defaultcosmetics.yml", false);
-        if (!Path.of(getDataFolder().getPath() + "/menus/").toFile().exists()) saveResource("menus/defaultmenu.yml", false);
+        if (!Path.of(getDataFolder().getPath() + "/menus/").toFile().exists()) {
+            saveResource("menus/defaultmenu_hats.yml", false);
+            saveResource("menus/defaultmenu_balloons.yml", false);
+            saveResource("menus/defaultmenu_hands.yml", false);
+            saveResource("menus/defaultmenu_backpacks.yml", false);
+        }
 
         // Configuration Sync
         final File configFile = Path.of(getInstance().getDataFolder().getPath(), "config.yml").toFile();
@@ -83,6 +89,7 @@ public final class HMCCosmeticsPlugin extends HibiscusPlugin {
 
         // Setup
         setup();
+        setPacketInterface(new CosmeticPacketInterface());
 
         // Commands
         getServer().getPluginCommand("cosmetic").setExecutor(new CosmeticCommand());
